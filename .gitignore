@@ -1,0 +1,6 @@
+visitor
+*.o
+*.obj
+*.exe
+.DS_Store
+visitor.dat

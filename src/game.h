@@ -1,0 +1,17 @@
+#ifndef GAME_H
+#define GAME_H
+
+typedef enum GameState {
+    GAME_STATE_OUTSIDE = 0,
+    GAME_STATE_INSIDE,
+    GAME_STATE_TRANSITION
+} GameState;
+
+enum {
+    GAME_WINDOW_WIDTH = 1280,
+    GAME_WINDOW_HEIGHT = 720,
+    GAME_INTERNAL_WIDTH = 320,
+    GAME_INTERNAL_HEIGHT = 240
+};
+
+#endif
