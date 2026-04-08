@@ -17,7 +17,7 @@ void NpcsInit(NpcSystem *npcs)
     {
         float lane = (float)((i % 5) - 2) * 1.2f;
         float zOffset = (float)(i / 5) * 3.1f;
-        npcs->list[i].position = (Vector3){ lane, 1.0f, 15.0f + zOffset };
+        npcs->list[i].position = (Vector3){ lane, 0.0f, 15.0f + zOffset };
         npcs->list[i].heading = Vector3Normalize((Vector3){ 0.0f, 0.0f, -1.0f });
         npcs->list[i].speed = 1.0f + 0.1f * (float)(i % 3);
         npcs->list[i].headTurn = 0.0f;
@@ -41,7 +41,7 @@ void NpcsSetOutsideVisitCount(NpcSystem *npcs, int outsideVisits)
         {
             float lane = (float)((i % 5) - 2) * 1.2f;
             float zOffset = (float)(i / 5) * 3.1f;
-            npcs->list[i].position = (Vector3){ lane, 1.0f, 15.0f + zOffset };
+            npcs->list[i].position = (Vector3){ lane, 0.0f, 15.0f + zOffset };
             npcs->list[i].animFrame = (float)(i * 7);
         }
     }

@@ -76,6 +76,7 @@ void WorldInit(World *world, const char *officeGlbPath)
         int colLoc = GetShaderLocation(world->litShader, "lightColor");
         int ambLoc = GetShaderLocation(world->litShader, "ambientColor");
         int lmLoc = GetShaderLocation(world->litShader, "useLightmap");
+        world->litViewPosLoc = GetShaderLocation(world->litShader, "viewPos");
 
         SetShaderValue(world->litShader, dirLoc, lightDir, SHADER_UNIFORM_VEC3);
         SetShaderValue(world->litShader, colLoc, lightColor, SHADER_UNIFORM_VEC3);
@@ -173,6 +174,13 @@ void WorldUpdate(World *world, GameState state, float conditionNorm, bool irrele
 
 void WorldDraw(World *world, const Camera3D *camera, GameState state)
 {
+    // Update view position for lit shader
+    if (world->hasLitShader && world->litViewPosLoc >= 0)
+    {
+        float camPos[3] = { camera->position.x, camera->position.y, camera->position.z };
+        SetShaderValue(world->litShader, world->litViewPosLoc, camPos, SHADER_UNIFORM_VEC3);
+    }
+
     if (world->hasSky)
     {
         rlDisableBackfaceCulling();
@@ -190,7 +198,7 @@ void WorldDraw(World *world, const Camera3D *camera, GameState state)
         ? (Color){ 247, 236, 212, 255 }
         : (Color){ 35, 30, 27, 255 };
 
-    DrawPlane((Vector3){ 0.0f, 0.0f, 0.0f }, (Vector2){ 40.0f, 40.0f }, (Color){ 74, 66, 56, 255 });
+    DrawPlane((Vector3){ 0.0f, -0.01f, 0.0f }, (Vector2){ 40.0f, 40.0f }, (Color){ 74, 66, 56, 255 });
 
     if (world->hasOffice)
     {

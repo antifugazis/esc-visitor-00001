@@ -24,7 +24,7 @@ int main(void)
     GameState prevState = state;
 
     World world;
-    WorldInit(&world, "assets/office_building.glb");
+    WorldInit(&world, "assets/backrooms.glb");
 
     Player player;
     PlayerInit(&player, world.outsideSpawn);
@@ -153,6 +153,22 @@ int main(void)
             BeginMode3D(renderCam);
                 WorldDraw(&world, &renderCam, state);
                 NpcsDraw(&npcs, &worker, state, dt);
+                
+                // Draw player body - legs visible when looking down
+                if (worker.ready)
+                {
+                    // Position body at feet, only lower half visible from camera
+                    Vector3 bodyPos = { 
+                        renderCam.position.x, 
+                        renderCam.position.y - 1.6f,  // Lowered so only legs show
+                        renderCam.position.z 
+                    };
+                    WorkerAnim pAnim = (speed > 2.5f) ? WORKER_ANIM_RUN : ((speed > 0.1f) ? WORKER_ANIM_WALK : WORKER_ANIM_TURN);
+                    static float playerAnimFrame = 0.0f;
+                    playerAnimFrame += dt * ((pAnim == WORKER_ANIM_RUN) ? 30.0f : 18.0f);
+                    WorkerDrawAnimated(&worker, pAnim, playerAnimFrame, bodyPos, player.yaw * RAD2DEG + 180.0f, 1.0f, WHITE);
+                }
+                
                 if (state == GAME_STATE_INSIDE) MirrorDraw(&mirror);
             EndMode3D();
 

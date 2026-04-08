@@ -18,6 +18,7 @@ typedef struct World {
     bool hasLitShader;
     bool hasSky;
     bool hasLightmap;
+    int litViewPosLoc;
 
     Model skyDome;
     Texture2D skyTexture;

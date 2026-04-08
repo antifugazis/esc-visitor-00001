@@ -4,20 +4,42 @@
 
 static void LoadClip(WorkerRig *worker, WorkerAnim id, const char *path)
 {
+    // Suppress bone sorting warnings from GLB files
+    SetTraceLogLevel(LOG_NONE);
     worker->clips[id].anims = LoadModelAnimations(path, &worker->clips[id].count);
+    SetTraceLogLevel(LOG_INFO);
+    
+    if (worker->clips[id].count > 0)
+    {
+        TraceLog(LOG_INFO, "Loaded animation %d from %s: %d anims, %d frames, %d bones", 
+            id, path, worker->clips[id].count, 
+            worker->clips[id].anims[0].frameCount,
+            worker->clips[id].anims[0].boneCount);
+    }
+    else
+    {
+        TraceLog(LOG_WARNING, "Failed to load animation %d from %s", id, path);
+    }
 }
 
 void WorkerInit(WorkerRig *worker, const char *modelPath, const char *animDir)
 {
     memset(worker, 0, sizeof(*worker));
 
+    // Suppress raylib bone sorting warnings (some GLB exports have non-sorted bones)
+    SetTraceLogLevel(LOG_NONE);
+
     if (FileExists(modelPath)) worker->model = LoadModel(modelPath);
 
-    // Some FBX exports store only skeleton/anim in the "character" file.
-    // Fallback to animation FBX files that often include mesh data.
-    if (worker->model.meshCount <= 0)
+    // Restore normal logging
+    SetTraceLogLevel(LOG_INFO);
+
+    // If model has no skeleton, use animation GLB files which contain mesh+bones
+    if (worker->model.meshCount <= 0 || worker->model.boneCount <= 0)
     {
-        if (worker->model.meshCount == 0 && worker->model.materialCount > 0) UnloadModel(worker->model);
+        if (worker->model.meshCount > 0 || worker->model.materialCount > 0) 
+            UnloadModel(worker->model);
+        memset(&worker->model, 0, sizeof(worker->model));
 
         const char *fallbacks[] = {
             "animations/Walking.glb",
@@ -28,14 +50,22 @@ void WorkerInit(WorkerRig *worker, const char *modelPath, const char *animDir)
         for (int i = 0; i < 3; i++)
         {
             if (!FileExists(fallbacks[i])) continue;
+            SetTraceLogLevel(LOG_NONE);
             worker->model = LoadModel(fallbacks[i]);
-            if (worker->model.meshCount > 0) break;
-            if (worker->model.materialCount > 0) UnloadModel(worker->model);
+            SetTraceLogLevel(LOG_INFO);
+            TraceLog(LOG_INFO, "Fallback model %s: %d meshes, %d bones", 
+                fallbacks[i], worker->model.meshCount, worker->model.boneCount);
+            if (worker->model.meshCount > 0 && worker->model.boneCount > 0) break;
+            if (worker->model.meshCount > 0 || worker->model.materialCount > 0) 
+                UnloadModel(worker->model);
             memset(&worker->model, 0, sizeof(worker->model));
         }
     }
 
     if (worker->model.meshCount <= 0) return;
+
+    TraceLog(LOG_INFO, "Worker model loaded: %d meshes, %d materials, %d bones", 
+        worker->model.meshCount, worker->model.materialCount, worker->model.boneCount);
 
     worker->baseScale = 1.0f;
 
@@ -120,6 +150,15 @@ void WorkerDrawAnimated(WorkerRig *worker, WorkerAnim anim, float frame, Vector3
             {
                 UpdateModelAnimation(worker->model, clip.anims[0], frameIndex);
             }
+            else
+            {
+                TraceLog(LOG_WARNING, "Animation %d invalid for model (bones: %d vs %d)", 
+                    anim, clip.anims[0].boneCount, worker->model.boneCount);
+            }
+        }
+        else
+        {
+            TraceLog(LOG_WARNING, "Animation %d not loaded (count: %d)", anim, clip.count);
         }
     }
 
