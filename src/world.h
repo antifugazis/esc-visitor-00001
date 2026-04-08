@@ -7,11 +7,21 @@
 typedef struct World {
     Model office;
     bool hasOffice;
+    BoundingBox officeBounds;
 
     Shader ps2Shader;
     Shader fogShader;
+    Shader litShader;
+    Shader skyShader;
     bool hasPs2Shader;
     bool hasFogShader;
+    bool hasLitShader;
+    bool hasSky;
+    bool hasLightmap;
+
+    Model skyDome;
+    Texture2D skyTexture;
+    Texture2D lightmapTexture;
 
     BoundingBox outsideBounds;
     BoundingBox waitingRoomBounds;
@@ -31,5 +41,8 @@ void WorldUpdate(World *world, GameState state, float conditionNorm, bool irrele
 void WorldDraw(World *world, const Camera3D *camera, GameState state);
 BoundingBox WorldGetActiveBounds(const World *world, GameState state);
 void WorldSetEffectsEnabled(World *world, bool enabled);
+Shader WorldGetLitShader(const World *world);
+bool WorldHasSky(const World *world);
+bool WorldHasLightmap(const World *world);
 
 #endif

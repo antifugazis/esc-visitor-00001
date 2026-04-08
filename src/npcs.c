@@ -21,6 +21,8 @@ void NpcsInit(NpcSystem *npcs)
         npcs->list[i].heading = Vector3Normalize((Vector3){ 0.0f, 0.0f, -1.0f });
         npcs->list[i].speed = 1.0f + 0.1f * (float)(i % 3);
         npcs->list[i].headTurn = 0.0f;
+        npcs->list[i].yawDegrees = 180.0f;
+        npcs->list[i].animFrame = (float)(i * 7);
         npcs->list[i].active = true;
     }
 }
@@ -40,6 +42,7 @@ void NpcsSetOutsideVisitCount(NpcSystem *npcs, int outsideVisits)
             float lane = (float)((i % 5) - 2) * 1.2f;
             float zOffset = (float)(i / 5) * 3.1f;
             npcs->list[i].position = (Vector3){ lane, 1.0f, 15.0f + zOffset };
+            npcs->list[i].animFrame = (float)(i * 7);
         }
     }
 
@@ -88,6 +91,7 @@ void NpcsUpdate(NpcSystem *npcs, float dt, GameState state, Vector3 playerPos)
 
         npcs->list[i].position = Vector3Add(npcs->list[i].position, Vector3Scale(npcs->list[i].heading, npcs->list[i].speed * dt));
         if (npcs->list[i].position.z < -5.0f) npcs->list[i].position.z = 20.0f + (float)(i % 4) * 2.0f;
+        npcs->list[i].yawDegrees = atan2f(npcs->list[i].heading.x, npcs->list[i].heading.z) * RAD2DEG;
 
         if (!npcs->itemGranted)
         {
@@ -100,24 +104,27 @@ void NpcsUpdate(NpcSystem *npcs, float dt, GameState state, Vector3 playerPos)
     }
 }
 
-void NpcsDraw(const NpcSystem *npcs, GameState state)
+void NpcsDraw(NpcSystem *npcs, WorkerRig *worker, GameState state, float dt)
 {
     if (state != GAME_STATE_OUTSIDE) return;
 
     for (int i = 0; i < npcs->count; i++)
     {
         if (!npcs->list[i].active) continue;
+        WorkerAnim anim = npcs->freezeTriggered ? WORKER_ANIM_TURN : WORKER_ANIM_WALK;
+        float fps = npcs->freezeTriggered ? 9.0f : 24.0f;
+        npcs->list[i].animFrame += dt * fps;
 
-        Color c = npcs->freezeTriggered ? (Color){ 132, 122, 112, 255 } : (Color){ 112, 106, 100, 255 };
         Vector3 p = npcs->list[i].position;
-
-        DrawCube((Vector3){ p.x, p.y, p.z }, 0.55f, 1.6f, 0.32f, c);
-
-        Vector3 head = { p.x, p.y + 1.0f, p.z };
-        float look = npcs->list[i].headTurn;
-        head.x += look * 0.06f;
-        head.z -= look * 0.06f;
-        DrawCube(head, 0.30f, 0.30f, 0.30f, (Color){ 98, 92, 86, 255 });
+        float lookYaw = npcs->list[i].yawDegrees + (npcs->list[i].headTurn * 18.0f);
+        if (worker && worker->ready)
+        {
+            WorkerDrawAnimated(worker, anim, npcs->list[i].animFrame, p, lookYaw, 1.0f, WHITE);
+        }
+        else
+        {
+            DrawCube((Vector3){ p.x, p.y + 0.9f, p.z }, 0.55f, 1.8f, 0.32f, (Color){ 112, 106, 100, 255 });
+        }
     }
 }
 

@@ -19,6 +19,7 @@ typedef struct Player {
 
 void PlayerInit(Player *player, Vector3 spawn);
 void PlayerUpdate(Player *player, float dt, bool allowInput);
+void PlayerUpdateNoclip(Player *player, float dt, bool allowInput);
 void PlayerConstrain(Player *player, BoundingBox bounds);
 Camera3D PlayerGetRenderCamera(const Player *player);
 float PlayerGetSpeed(const Player *player);

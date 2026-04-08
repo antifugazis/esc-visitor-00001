@@ -3,12 +3,15 @@
 
 #include "raylib.h"
 #include "game.h"
+#include "worker.h"
 
 typedef struct Npc {
     Vector3 position;
     Vector3 heading;
     float speed;
     float headTurn;
+    float yawDegrees;
+    float animFrame;
     bool active;
 } Npc;
 
@@ -29,7 +32,7 @@ void NpcsInit(NpcSystem *npcs);
 void NpcsSetOutsideVisitCount(NpcSystem *npcs, int outsideVisits);
 void NpcsMarkInsideVisited(NpcSystem *npcs);
 void NpcsUpdate(NpcSystem *npcs, float dt, GameState state, Vector3 playerPos);
-void NpcsDraw(const NpcSystem *npcs, GameState state);
+void NpcsDraw(NpcSystem *npcs, WorkerRig *worker, GameState state, float dt);
 bool NpcsConsumeItemGrant(NpcSystem *npcs);
 
 #endif

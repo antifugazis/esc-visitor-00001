@@ -33,7 +33,7 @@ int main(void)
     NpcsInit(&npcs);
     
     WorkerRig worker;
-    WorkerInit(&worker, "assets/worker.glb", "animations");
+    WorkerInit(&worker, "assets/worker.fbx", "animations");
     WorkerSetShader(&worker, WorldGetLitShader(&world));
 
     ConditionSystem condition;

@@ -100,12 +100,7 @@ void WorldInit(World *world, const char *officeGlbPath)
         SetShaderValue(world->litShader, GetShaderLocation(world->litShader, "useLightmap"), &useLightmap, SHADER_UNIFORM_INT);
     }
 
-    if (FileExists("assets/sky.png"))
-    {
-        world->skyTexture = LoadTexture("assets/sky.png");
-        world->hasSky = world->skyTexture.id > 0;
-    }
-    else if (FileExists("assets/sky.hdr"))
+    if (FileExists("assets/sky.hdr"))
     {
         Image skyImg = LoadImage("assets/sky.hdr");
         if (skyImg.data)
