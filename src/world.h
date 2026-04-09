@@ -26,6 +26,8 @@ typedef struct World {
 
     BoundingBox outsideBounds;
     BoundingBox waitingRoomBounds;
+    BoundingBox colliders[512];
+    int colliderCount;
 
     Vector3 outsideSpawn;
     Vector3 insideSpawn;
@@ -45,5 +47,6 @@ void WorldSetEffectsEnabled(World *world, bool enabled);
 Shader WorldGetLitShader(const World *world);
 bool WorldHasSky(const World *world);
 bool WorldHasLightmap(const World *world);
+Vector3 WorldResolvePlayerCollision(const World *world, Vector3 cameraPos, float radius);
 
 #endif

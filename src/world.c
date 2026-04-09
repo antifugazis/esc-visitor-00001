@@ -2,6 +2,14 @@
 
 #include <stdio.h>
 #include "rlgl.h"
+#include "raymath.h"
+
+static float Clampf(float v, float minv, float maxv)
+{
+    if (v < minv) return minv;
+    if (v > maxv) return maxv;
+    return v;
+}
 
 void WorldInit(World *world, const char *officeGlbPath)
 {
@@ -11,6 +19,7 @@ void WorldInit(World *world, const char *officeGlbPath)
     world->hasLitShader = false;
     world->hasSky = false;
     world->hasLightmap = false;
+    world->colliderCount = 0;
 
     world->outsideBounds = (BoundingBox){
         .min = (Vector3){ -18.0f, 0.8f, -18.0f },
@@ -34,6 +43,21 @@ void WorldInit(World *world, const char *officeGlbPath)
         world->office = LoadModel(officeGlbPath);
         world->hasOffice = true;
         world->officeBounds = GetModelBoundingBox(world->office);
+
+        for (int i = 0; i < world->office.meshCount && world->colliderCount < 512; i++)
+        {
+            BoundingBox bb = GetMeshBoundingBox(world->office.meshes[i]);
+            float sx = bb.max.x - bb.min.x;
+            float sy = bb.max.y - bb.min.y;
+            float sz = bb.max.z - bb.min.z;
+            float thin = (sx < sz) ? sx : sz;
+
+            // Keep mostly wall-like solids: tall enough + one thin axis.
+            if (sy >= 1.2f && thin <= 1.2f && sx > 0.05f && sz > 0.05f)
+            {
+                world->colliders[world->colliderCount++] = bb;
+            }
+        }
 
         BoundingBox bb = world->officeBounds;
         float centerX = (bb.min.x + bb.max.x) * 0.5f;
@@ -255,4 +279,54 @@ bool WorldHasSky(const World *world)
 bool WorldHasLightmap(const World *world)
 {
     return world->hasLightmap;
+}
+
+Vector3 WorldResolvePlayerCollision(const World *world, Vector3 cameraPos, float radius)
+{
+    Vector3 pos = cameraPos;
+    float feetY = cameraPos.y - 1.62f;
+
+    for (int i = 0; i < world->colliderCount; i++)
+    {
+        BoundingBox bb = world->colliders[i];
+
+        if (feetY < bb.min.y - 0.2f || feetY > bb.max.y + 0.2f) continue;
+
+        float cx = Clampf(pos.x, bb.min.x, bb.max.x);
+        float cz = Clampf(pos.z, bb.min.z, bb.max.z);
+        float dx = pos.x - cx;
+        float dz = pos.z - cz;
+        float d2 = dx * dx + dz * dz;
+        float r2 = radius * radius;
+
+        if (d2 >= r2) continue;
+
+        if (d2 > 0.000001f)
+        {
+            float d = sqrtf(d2);
+            float push = radius - d;
+            pos.x += (dx / d) * push;
+            pos.z += (dz / d) * push;
+        }
+        else
+        {
+            float left = fabsf(pos.x - bb.min.x);
+            float right = fabsf(bb.max.x - pos.x);
+            float front = fabsf(pos.z - bb.min.z);
+            float back = fabsf(bb.max.z - pos.z);
+
+            float minp = left;
+            int axis = 0;
+            if (right < minp) { minp = right; axis = 1; }
+            if (front < minp) { minp = front; axis = 2; }
+            if (back < minp) { minp = back; axis = 3; }
+
+            if (axis == 0) pos.x = bb.min.x - radius;
+            else if (axis == 1) pos.x = bb.max.x + radius;
+            else if (axis == 2) pos.z = bb.min.z - radius;
+            else pos.z = bb.max.z + radius;
+        }
+    }
+
+    return pos;
 }

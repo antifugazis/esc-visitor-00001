@@ -23,6 +23,7 @@ void NpcsInit(NpcSystem *npcs)
         npcs->list[i].headTurn = 0.0f;
         npcs->list[i].yawDegrees = 180.0f;
         npcs->list[i].animFrame = (float)(i * 7);
+        npcs->list[i].startWalkTimer = 0.25f + 0.03f * (float)(i % 5);
         npcs->list[i].active = true;
     }
 }
@@ -43,6 +44,7 @@ void NpcsSetOutsideVisitCount(NpcSystem *npcs, int outsideVisits)
             float zOffset = (float)(i / 5) * 3.1f;
             npcs->list[i].position = (Vector3){ lane, 0.0f, 15.0f + zOffset };
             npcs->list[i].animFrame = (float)(i * 7);
+            npcs->list[i].startWalkTimer = 0.25f + 0.03f * (float)(i % 5);
         }
     }
 
@@ -111,8 +113,26 @@ void NpcsDraw(NpcSystem *npcs, WorkerRig *worker, GameState state, float dt)
     for (int i = 0; i < npcs->count; i++)
     {
         if (!npcs->list[i].active) continue;
-        WorkerAnim anim = npcs->freezeTriggered ? WORKER_ANIM_TURN : WORKER_ANIM_WALK;
-        float fps = npcs->freezeTriggered ? 9.0f : 24.0f;
+        WorkerAnim anim = WORKER_ANIM_WALK;
+        float fps = 24.0f;
+
+        if (npcs->freezeTriggered)
+        {
+            anim = WORKER_ANIM_TURN;
+            fps = 9.0f;
+        }
+        else if (npcs->list[i].startWalkTimer > 0.0f)
+        {
+            anim = WORKER_ANIM_START_WALK;
+            fps = 18.0f;
+            npcs->list[i].startWalkTimer -= dt;
+        }
+        else if (npcs->list[i].speed > 1.15f)
+        {
+            anim = WORKER_ANIM_RUN;
+            fps = 30.0f;
+        }
+
         npcs->list[i].animFrame += dt * fps;
 
         Vector3 p = npcs->list[i].position;

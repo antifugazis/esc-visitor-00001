@@ -12,6 +12,7 @@ typedef struct Npc {
     float headTurn;
     float yawDegrees;
     float animFrame;
+    float startWalkTimer;
     bool active;
 } Npc;
 

@@ -12,6 +12,7 @@
 #include "world.h"
 
 #include <string.h>
+#include <math.h>
 
 int main(void)
 {
@@ -24,7 +25,7 @@ int main(void)
     GameState prevState = state;
 
     World world;
-    WorldInit(&world, "assets/backrooms.glb");
+    WorldInit(&world, "assets/office_building.glb");
 
     Player player;
     PlayerInit(&player, world.outsideSpawn);
@@ -33,7 +34,7 @@ int main(void)
     NpcsInit(&npcs);
     
     WorkerRig worker;
-    WorkerInit(&worker, "assets/worker.glb", "animations");
+    WorkerInit(&worker, "assets/be cool.glb", "animations");
     WorkerSetShader(&worker, WorldGetLitShader(&world));
 
     ConditionSystem condition;
@@ -58,6 +59,9 @@ int main(void)
     int outsideVisits = 0;
     float footstepAccumulator = 0.0f;
     bool noclip = false;
+    float playerAnimFrame = 0.0f;
+    float playerStartWalkTimer = 0.0f;
+    float prevYaw = player.yaw;
     WorldSetEffectsEnabled(&world, false);
 
     while (!WindowShouldClose())
@@ -97,6 +101,7 @@ int main(void)
         {
             PlayerUpdate(&player, dt, true);
             PlayerConstrain(&player, WorldGetActiveBounds(&world, state));
+            player.camera.position = WorldResolvePlayerCollision(&world, player.camera.position, 0.24f);
         }
 
         float speed = PlayerGetSpeed(&player);
@@ -127,6 +132,34 @@ int main(void)
         AudioSystemUpdate(&audio, dt, state == GAME_STATE_INSIDE, ConditionGetNormalized(&condition));
 
         Camera3D renderCam = PlayerGetRenderCamera(&player);
+        float yawDelta = player.yaw - prevYaw;
+        if (yawDelta > PI) yawDelta -= 2.0f * PI;
+        if (yawDelta < -PI) yawDelta += 2.0f * PI;
+        prevYaw = player.yaw;
+
+        WorkerAnim playerAnim = WORKER_ANIM_TURN;
+        if (speed > 0.1f && playerStartWalkTimer <= 0.0f) playerStartWalkTimer = 0.35f;
+        if (speed <= 0.1f) playerStartWalkTimer = 0.0f;
+
+        if (playerStartWalkTimer > 0.0f)
+        {
+            playerAnim = WORKER_ANIM_START_WALK;
+            playerStartWalkTimer -= dt;
+        }
+        else if (speed > 2.7f)
+        {
+            playerAnim = WORKER_ANIM_RUN;
+        }
+        else if (speed > 0.2f)
+        {
+            float turnRate = fabsf(yawDelta) / (dt > 0.0001f ? dt : 0.0001f);
+            if (turnRate > 0.85f)
+                playerAnim = (yawDelta > 0.0f) ? WORKER_ANIM_TURN_RIGHT : WORKER_ANIM_TURN_LEFT;
+            else
+                playerAnim = WORKER_ANIM_WALK;
+        }
+
+        playerAnimFrame += dt * ((playerAnim == WORKER_ANIM_RUN) ? 30.0f : 20.0f);
 
         if (state == GAME_STATE_INSIDE)
         {
@@ -136,10 +169,7 @@ int main(void)
                 WorldDraw(&world, &mirrorCam, state);
                 NpcsDraw(&npcs, &worker, state, dt);
                 Vector3 playerBodyPos = { renderCam.position.x, renderCam.position.y - 1.65f, renderCam.position.z };
-                WorkerAnim pAnim = (speed > 2.5f) ? WORKER_ANIM_RUN : ((speed > 0.1f) ? WORKER_ANIM_WALK : WORKER_ANIM_TURN);
-                static float playerAnimFrame = 0.0f;
-                playerAnimFrame += dt * ((pAnim == WORKER_ANIM_RUN) ? 30.0f : 18.0f);
-                WorkerDrawAnimated(&worker, pAnim, playerAnimFrame, playerBodyPos, player.yaw * RAD2DEG + 180.0f, 1.0f, WHITE);
+                WorkerDrawAnimated(&worker, playerAnim, playerAnimFrame, playerBodyPos, player.yaw * RAD2DEG + 180.0f, 1.0f, WHITE);
             EndMode3D();
             MirrorEndReflection();
         }
@@ -163,10 +193,7 @@ int main(void)
                         renderCam.position.y - 1.6f,  // Lowered so only legs show
                         renderCam.position.z 
                     };
-                    WorkerAnim pAnim = (speed > 2.5f) ? WORKER_ANIM_RUN : ((speed > 0.1f) ? WORKER_ANIM_WALK : WORKER_ANIM_TURN);
-                    static float playerAnimFrame = 0.0f;
-                    playerAnimFrame += dt * ((pAnim == WORKER_ANIM_RUN) ? 30.0f : 18.0f);
-                    WorkerDrawAnimated(&worker, pAnim, playerAnimFrame, bodyPos, player.yaw * RAD2DEG + 180.0f, 1.0f, WHITE);
+                    WorkerDrawAnimated(&worker, playerAnim, playerAnimFrame, bodyPos, player.yaw * RAD2DEG + 180.0f, 1.0f, WHITE);
                 }
                 
                 if (state == GAME_STATE_INSIDE) MirrorDraw(&mirror);

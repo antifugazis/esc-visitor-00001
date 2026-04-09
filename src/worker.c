@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+static bool g_warnedInvalidAnim[WORKER_ANIM_COUNT] = { 0 };
+
 static void LoadClip(WorkerRig *worker, WorkerAnim id, const char *path)
 {
     // Suppress bone sorting warnings from GLB files
@@ -25,6 +27,7 @@ static void LoadClip(WorkerRig *worker, WorkerAnim id, const char *path)
 void WorkerInit(WorkerRig *worker, const char *modelPath, const char *animDir)
 {
     memset(worker, 0, sizeof(*worker));
+    memset(g_warnedInvalidAnim, 0, sizeof(g_warnedInvalidAnim));
 
     // Suppress raylib bone sorting warnings (some GLB exports have non-sorted bones)
     SetTraceLogLevel(LOG_NONE);
@@ -129,37 +132,48 @@ void WorkerDrawAnimated(WorkerRig *worker, WorkerAnim anim, float frame, Vector3
 {
     if (!worker->ready) return;
 
-    if (anim >= 0 && anim < WORKER_ANIM_COUNT)
-    {
-        WorkerClip clip = worker->clips[anim];
-        if (clip.anims && clip.count > 0)
-        {
-            int frameCount = clip.anims[0].frameCount;
-            int frameIndex = (int)frame;
-            if (frameCount > 1)
-            {
-                frameIndex %= frameCount;
-                if (frameIndex < 0) frameIndex += frameCount;
-            }
-            else
-            {
-                frameIndex = 0;
-            }
+    WorkerAnim selected = anim;
+    if (selected < 0 || selected >= WORKER_ANIM_COUNT) selected = WORKER_ANIM_WALK;
 
-            if (IsModelAnimationValid(worker->model, clip.anims[0]))
-            {
-                UpdateModelAnimation(worker->model, clip.anims[0], frameIndex);
-            }
-            else
-            {
-                TraceLog(LOG_WARNING, "Animation %d invalid for model (bones: %d vs %d)", 
-                    anim, clip.anims[0].boneCount, worker->model.boneCount);
-            }
+    // Use requested clip when valid; otherwise fallback to WALK then TURN.
+    bool valid = false;
+    WorkerClip clip = worker->clips[selected];
+    if (clip.anims && clip.count > 0) valid = IsModelAnimationValid(worker->model, clip.anims[0]);
+
+    if (!valid)
+    {
+        if (!g_warnedInvalidAnim[selected])
+        {
+            int bones = (clip.anims && clip.count > 0) ? clip.anims[0].boneCount : 0;
+            TraceLog(LOG_WARNING, "Animation %d invalid for model (bones: %d vs %d), using fallback", selected, bones, worker->model.boneCount);
+            g_warnedInvalidAnim[selected] = true;
+        }
+
+        selected = WORKER_ANIM_WALK;
+        clip = worker->clips[selected];
+        valid = (clip.anims && clip.count > 0 && IsModelAnimationValid(worker->model, clip.anims[0]));
+        if (!valid)
+        {
+            selected = WORKER_ANIM_TURN;
+            clip = worker->clips[selected];
+            valid = (clip.anims && clip.count > 0 && IsModelAnimationValid(worker->model, clip.anims[0]));
+        }
+    }
+
+    if (valid)
+    {
+        int frameCount = clip.anims[0].frameCount;
+        int frameIndex = (int)frame;
+        if (frameCount > 1)
+        {
+            frameIndex %= frameCount;
+            if (frameIndex < 0) frameIndex += frameCount;
         }
         else
         {
-            TraceLog(LOG_WARNING, "Animation %d not loaded (count: %d)", anim, clip.count);
+            frameIndex = 0;
         }
+        UpdateModelAnimation(worker->model, clip.anims[0], frameIndex);
     }
 
     DrawModelEx(
